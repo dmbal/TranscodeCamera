@@ -21,18 +21,10 @@
 
 #include <stdio.h>
 #include <assert.h>
+#include <atlbase.h>
 #include <mfapi.h>
 #include <mfidl.h>
-
-template <class T> void SafeRelease(T **ppT)
-{
-    if (*ppT)
-    {
-        (*ppT)->Release();
-        *ppT = NULL;
-    }
-}
-
+#include "helpers.h"
 
 class CTranscoder
 {

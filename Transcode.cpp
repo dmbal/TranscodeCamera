@@ -193,48 +193,67 @@ HRESULT CTranscoder::ConfigureVideoOutput()
 
     // Configure the video stream
 
-    // Create a new attribute store.
-    if (SUCCEEDED(hr))
-    {
-        hr = MFCreateAttributes( &pVideoAttrs, 5 );
-    }
+    CComPtr<IMFPresentationDescriptor> pPresDescriptor;
+    CComPtr<IMFStreamDescriptor> pStreamDescriptor;
+    CComPtr<IMFMediaTypeHandler> pHandler = NULL;
+    CComPtr<IMFMediaType> inputMediaType;
+    DWORD nSourceStreams = 0;
+    BOOL streamSelected = FALSE;
+    UINT32 bitrate = 0;
+    UINT32 width = 0;
+    UINT32 height = 0;
+    UINT32 pixelRatioNumerator = 0;
+    UINT32 pixelRatioDenumerator = 0;
+    UINT32 rateNumerator = 0;
+    UINT32 rateDenumerator = 0;
+    UINT32 interlaceMode = 0;
 
-    // Set the encoder to be Windows Media video encoder, so that the appropriate MFTs are added to the topology.
-    if (SUCCEEDED(hr))
-    {
-        hr = pVideoAttrs->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_WMV3);
-    }
 
-    // Set the frame rate.
-    if (SUCCEEDED(hr))
-    {
-        hr = MFSetAttributeRatio(pVideoAttrs, MF_MT_FRAME_RATE, 30, 1);
-    }
+    hr = m_pSource->CreatePresentationDescriptor(&pPresDescriptor);
+    THROW_ON_FAIL(hr);
+    hr = pPresDescriptor->GetStreamDescriptorCount(&nSourceStreams);
+    THROW_ON_FAIL(hr);
+    hr = pPresDescriptor->GetStreamDescriptorByIndex(1, &streamSelected, &pStreamDescriptor);
+    THROW_ON_FAIL(hr);
+    hr = pStreamDescriptor->GetMediaTypeHandler(&pHandler);
+    THROW_ON_FAIL(hr);
+    hr = pHandler->GetCurrentMediaType(&inputMediaType);
+    THROW_ON_FAIL(hr);
 
-    //Set the frame size.
-    if (SUCCEEDED(hr))
-    {
-        hr = MFSetAttributeSize(pVideoAttrs, MF_MT_FRAME_SIZE, 320, 240);   
-    }
+    // reading attributes
+    inputMediaType->GetUINT32(MF_MT_AVG_BITRATE, &bitrate);
+    THROW_ON_FAIL(hr);
+    hr = MFGetAttributeSize(inputMediaType, MF_MT_FRAME_SIZE, &width, &height);
+    THROW_ON_FAIL(hr);
+    hr = MFGetAttributeRatio(inputMediaType, MF_MT_FRAME_RATE, &rateNumerator, &rateDenumerator);
+    THROW_ON_FAIL(hr);
+    hr = MFGetAttributeRatio(inputMediaType, MF_MT_PIXEL_ASPECT_RATIO, &pixelRatioNumerator, &pixelRatioDenumerator);
+    THROW_ON_FAIL(hr);
+    hr = inputMediaType->GetUINT32(MF_MT_INTERLACE_MODE, &interlaceMode);
+    THROW_ON_FAIL(hr);
+    hr = MFCreateAttributes( &pVideoAttrs, 6);
+    THROW_ON_FAIL(hr);
 
-    //Set the pixel aspect ratio
-    if (SUCCEEDED(hr))
-    {
-        hr = MFSetAttributeRatio(pVideoAttrs, MF_MT_PIXEL_ASPECT_RATIO, 1, 1);
-    }
+    // setting attributes
+    //hr = pVideoAttrs->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_H264);
+    //THROW_ON_FAIL(hr);
+    //hr = MFSetAttributeRatio(pVideoAttrs, MF_MT_FRAME_RATE, rateNumerator, rateDenumerator);
+    //THROW_ON_FAIL(hr);
+    //hr = MFSetAttributeSize(pVideoAttrs, MF_MT_FRAME_SIZE, width, height);
+    //THROW_ON_FAIL(hr);
+    //hr = MFSetAttributeRatio(pVideoAttrs, MF_MT_PIXEL_ASPECT_RATIO, pixelRatioNumerator, pixelRatioDenumerator);
+    //THROW_ON_FAIL(hr);
+    //hr = pVideoAttrs->SetUINT32(MF_MT_AVG_BITRATE, bitrate);
+    //THROW_ON_FAIL(hr);
+    //hr = pVideoAttrs->SetUINT32(MF_MT_INTERLACE_MODE, interlaceMode);
+    //THROW_ON_FAIL(hr);
 
-    // Set the bit rate.
-    if (SUCCEEDED(hr))
-    {
-        hr = pVideoAttrs->SetUINT32(MF_MT_AVG_BITRATE, 300000);
-    }
+    // copy all items
+    hr = inputMediaType->CopyAllItems(pVideoAttrs);
+    THROW_ON_FAIL(hr);
 
-    // Set the attribute store on the transcode profile.
-    if (SUCCEEDED(hr))
-    {
-        hr = m_pProfile->SetVideoAttributes( pVideoAttrs );
-    }
-
+    hr = m_pProfile->SetVideoAttributes(pVideoAttrs);
+    THROW_ON_FAIL(hr);
     SafeRelease(&pVideoAttrs);
     return hr;
 }
